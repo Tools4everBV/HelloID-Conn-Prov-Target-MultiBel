@@ -52,7 +52,7 @@
     },
     {
       "Name": "otherInfo",
-      "Description": "Required field when creating a new user. MultiBel will throw an 500 error when this field is not sent",
+      "Description": "",
       "Type": "Text",
       "MappingActions": [
         {
