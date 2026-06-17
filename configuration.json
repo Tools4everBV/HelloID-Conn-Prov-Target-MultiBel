@@ -13,7 +13,7 @@
     {
         "key": "BaseUrl",
         "type": "input",
-        "defaultValue": "",
+        "defaultValue": "https://webapi.multibel.eu",
         "templateOptions": {
             "label": "BaseUrl",
             "description": "The URL to the API.",

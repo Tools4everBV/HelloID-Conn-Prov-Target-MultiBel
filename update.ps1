@@ -147,6 +147,9 @@ try {
                 Write-Information "[DryRun] Update MultiBel account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
             }
 
+            if ($outputContext.Data.PSObject.Properties.Name -Contains 'multibelPersonId') {
+                $outputContext.Data.multibelPersonId = $actionContext.References.Account
+            }
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
                     Message = "Update account was successful, Account property(s) updated: [$($propertiesChanged.name -join ',')]"
@@ -157,6 +160,7 @@ try {
 
         'NoChanges' {
             Write-Information "No changes to MultiBel account with accountReference: [$($actionContext.References.Account)]"
+            $outputContext.Data = $correlatedAccount | ConvertTo-MultiBelAccountObject
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
                     Message = "Skipped updating MultiBel account with AccountReference: [$($actionContext.References.Account)]. Reason: No changes."
