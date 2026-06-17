@@ -96,6 +96,7 @@ The account reference is populated with the property `multibelPersonId` property
 ### FieldMapping
 - **JobCategories**: In MultiBel, a user can have multiple job categories. The connector is configured to set only a default job category during creation. And will not be updated afterwards. In the Import script the job categories are listed comma separated.
 - **Values must exist**: The Field `JobCategories` and `rolName` must be configured with existing values in MultiBel.
+- **OtherInfo** must be included in the body when creating an account. The API returns a `500` error if this field is not present in the body.
 
 ### API Limitation
 - **PhoneNumbers**:<br>
