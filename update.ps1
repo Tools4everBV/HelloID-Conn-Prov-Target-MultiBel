@@ -58,8 +58,12 @@ function ConvertTo-MultiBelAccountObject {
     )
     process {
         $returnObject = $AccountObject | Select-Object -Property $outputContext.Data.PSObject.Properties.Name
-        if ($returnObject.PSObject.Properties.Name -contains 'jobCategories') {
-            $returnObject.jobCategories = $returnObject.jobCategories.id -join ', '
+        # Only keep countryCode and number of the phone numbers, as used in the field mapping
+        foreach ($property in @($returnObject.PSObject.Properties | Where-Object { $_.Name -match '^phoneNumber([1-9]|10)$' })) {
+            $property.Value = [PSCustomObject]@{
+                countryCode = "$($property.Value.countryCode)"
+                number      = "$($property.Value.number)"
+            }
         }
         return $returnObject
     }
@@ -87,12 +91,40 @@ try {
 
     if (-not [string]::IsNullOrWhiteSpace($correlatedAccount)) {
         $outputContext.PreviousData = $correlatedAccount | ConvertTo-MultiBelAccountObject
+
+        # Phone numbers are nested objects and are compared separately
+        $phoneNumberProperties = @($actionContext.Data.PSObject.Properties.Name | Where-Object { $_ -match '^phoneNumber([1-9]|10)$' })
         $splatCompareProperties = @{
-            ReferenceObject  = @($outputContext.PreviousData.PSObject.Properties)
-            DifferenceObject = @($actionContext.Data.PSObject.Properties)
+            ReferenceObject  = @($outputContext.PreviousData.PSObject.Properties | Where-Object { $_.Name -notin $phoneNumberProperties })
+            DifferenceObject = @($actionContext.Data.PSObject.Properties | Where-Object { $_.Name -notin $phoneNumberProperties })
         }
-        $propertiesChanged = Compare-Object @splatCompareProperties -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
-        if ($propertiesChanged) {
+        $propertiesChanged = @(Compare-Object @splatCompareProperties -PassThru | Where-Object { $_.SideIndicator -eq '=>' })
+
+        # A phone number with an empty number in the field mapping is cleared in MultiBel.
+        # MultiBel only accepts an empty number when the countryCode is also empty
+        $desiredPhoneNumbers = @{}
+        $phoneNumbersChanged = @(foreach ($phoneNumberProperty in $phoneNumberProperties) {
+                $desiredPhoneNumber = [PSCustomObject]@{
+                    countryCode = "$($actionContext.Data.$phoneNumberProperty.countryCode)".Trim()
+                    number      = "$($actionContext.Data.$phoneNumberProperty.number)".Trim()
+                }
+                if ([string]::IsNullOrEmpty($desiredPhoneNumber.number)) {
+                    $desiredPhoneNumber.countryCode = ''
+                }
+                elseif ([string]::IsNullOrEmpty($desiredPhoneNumber.countryCode)) {
+                    throw "The field mapping [$phoneNumberProperty.countryCode] is empty while [$phoneNumberProperty.number] has a value. MultiBel requires both values"
+                }
+                $desiredPhoneNumbers[$phoneNumberProperty] = $desiredPhoneNumber
+
+                $currentPhoneNumber = $outputContext.PreviousData.$phoneNumberProperty
+                if ($desiredPhoneNumber.countryCode -ne "$($currentPhoneNumber.countryCode)" -or
+                    $desiredPhoneNumber.number -ne "$($currentPhoneNumber.number)") {
+                    $phoneNumberProperty
+                }
+            })
+
+        $propertiesChangedNames = @(@($propertiesChanged | ForEach-Object { $_.Name }) + $phoneNumbersChanged)
+        if ($propertiesChangedNames.Count -gt 0) {
             $lifecycleProcess = 'UpdateAccount'
         }
         else {
@@ -106,27 +138,18 @@ try {
     # Process
     switch ($lifecycleProcess) {
         'UpdateAccount' {
-            Write-Information "Account property(s) required to update: $($propertiesChanged.Name -join ', ')"
+            Write-Information "Account property(s) required to update: $($propertiesChangedNames -join ', ')"
 
             $body = $correlatedAccount.PSObject.Copy()
-
-            # Required to keep the PUT call from failing and losing existing phoneNumbers
-            for ($i = 1; $i -le 10; $i++) {
-                $phone = $body."phoneNumber$($i)"
-                if ([string]::IsNullOrWhiteSpace($phone.number) -or [string]::IsNullOrWhiteSpace($phone.countryCode)) {
-                    $body.PSObject.Properties.Remove("phoneNumber$($i)") | Out-Null
-                }
-            }
-
 
             foreach ($property in $propertiesChanged) {
                 $body.$($property.Name) = $actionContext.Data.$($property.Name)
             }
 
-            if ($propertiesChanged.Name -contains 'JobCategories') {
-                throw "The connector does not support updating the 'JobCategories' properties in the Account lifecycle."
+            foreach ($phoneNumberProperty in $phoneNumbersChanged) {
+                $body | Add-Member -NotePropertyName $phoneNumberProperty -NotePropertyValue $desiredPhoneNumbers[$phoneNumberProperty] -Force
             }
-            
+
 
             $headers['Content-Type'] = 'application/json;charset=utf-8'
             $splatUpdateParams = @{
@@ -150,7 +173,7 @@ try {
             }
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Update account was successful, Account property(s) updated: [$($propertiesChanged.name -join ',')]"
+                    Message = "Update account was successful, Account property(s) updated: [$($propertiesChangedNames -join ',')]"
                     IsError = $false
                 })
             break

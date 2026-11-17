@@ -57,9 +57,18 @@ function ConvertTo-MultiBelImportAccountObject {
 
     )
     process {
-        $returnObject = $AccountObject | Select-Object -Property $actionContext.ImportFields
+        # Nested fields (for example phoneNumber1.number) are selected on the top level property
+        $importFields = @($actionContext.ImportFields | ForEach-Object { $_.Split('.')[0] } | Select-Object -Unique)
+        $returnObject = $AccountObject | Select-Object -Property $importFields
         if ($returnObject.PSObject.Properties.Name -contains 'jobCategories') {
             $returnObject.jobCategories = $returnObject.jobCategories.id -join ', '
+        }
+        # Only keep countryCode and number of the phone numbers, as used in the field mapping
+        foreach ($property in @($returnObject.PSObject.Properties | Where-Object { $_.Name -match '^phoneNumber([1-9]|10)$' })) {
+            $property.Value = [PSCustomObject]@{
+                countryCode = "$($property.Value.countryCode)"
+                number      = "$($property.Value.number)"
+            }
         }
         return $returnObject
     }

@@ -31,7 +31,7 @@
     - [Retrieve roles from MultiBel](#retrieve-roles-from-multibel)
     - [Retrieve job categories from MultiBel](#retrieve-job-categories-from-multibel)
     - [JobCategories as permissions](#jobcategories-as-permissions)
-    - [API Limitation](#api-limitation)
+    - [PhoneNumbers](#phonenumbers)
   - [Development resources](#development-resources)
     - [API endpoints](#api-endpoints)
     - [API documentation](#api-documentation)
@@ -102,7 +102,7 @@ The account reference is populated with the property `multibelPersonId` property
 
 MultiBel requires at least one job category when creating an account. This job category is configured in the connection setting `Default job category id`.
 
-- **Create**: the default job category is always set when creating an account. The value of the field mapping `jobCategories` is overwritten by the configuration setting.
+- **Create**: the default job category is always set when creating an account. The job categories are not part of the field mapping.
 - **Permissions**: the default job category is excluded in `permissions.ps1` and in the permission import (`import.ps1`). It can therefore not be selected in a business rule and is never revoked by HelloID.
 - **Find the id**: use the snippet in [Retrieve job categories from MultiBel](#retrieve-job-categories-from-multibel) to look up the `id` of the default job category.
 
@@ -119,7 +119,7 @@ MultiBel has no separate API endpoints to add or remove a single job category. T
 ## Remarks
 ### FieldMapping
 - **JobCategories**: In MultiBel, a user can have multiple job categories. MultiBel requires at least one job category when creating an account. The job categories are handled as follows:
-  1. **Create**: one default job category is set initially. The `id` comes from the configuration setting `Default job category id` and overwrites the field mapping `jobCategories`, see [Default job category](#default-job-category).
+  1. **Create**: one default job category is set initially. The `id` comes from the configuration setting `Default job category id`, see [Default job category](#default-job-category).
   2. **Update**: the job categories cannot be updated through the account lifecycle (update action).
   3. **Permissions**: all other job categories are granted and revoked as permissions, see [Permissions](#permissions).
 
@@ -160,9 +160,21 @@ $jobCategories = Invoke-RestMethod -Uri "$baseUrl/api/v2/JobCategory" -Method 'G
 - **Last job category**: Revoking the last job category of an account sends an empty list. Verify in the test environment whether MultiBel accepts a person without job categories.
 - **Sub job categories**: MultiBel returns an error when a sub job category of a corporation job category is assigned.
 
-### API Limitation
-- **PhoneNumbers**:<br>
-The API supports 1 - 10 phone numbers, in different properties. There is a difference between the GET and PUT call. There is some extra logic in the connector to handle this. The connector currently does not support adding or updating the phone numbers.
+### PhoneNumbers
+MultiBel supports 1 - 10 phone numbers in the properties `phoneNumber1` to `phoneNumber10`. Each phone number is an object with a `countryCode` and a `number`, and MultiBel requires both values. The field mapping contains two phone numbers by default: `phoneNumber1` with the business mobile number (`Person.Contact.Business.Phone.Mobile`) and `phoneNumber2` with the business fixed number (`Person.Contact.Business.Phone.Fixed`). You can add more phone numbers with the same naming, for example `phoneNumber3.countryCode` and `phoneNumber3.number`, or remove the ones you do not use.
+
+- **Create**: a phone number is only sent when `number` has a value.
+- **Update**: a phone number in the field mapping is always kept in line with HelloID. It is compared on `countryCode` and `number` and updated when one of them is changed. When `number` is empty in HelloID, the phone number is cleared in MultiBel. MultiBel only accepts an empty `number` when the `countryCode` is also empty, so the connector then sends both values empty, regardless of the fixed `countryCode` in the field mapping.
+- **Validation**: when `number` has a value and `countryCode` is empty, the action fails with a clear error.
+- **Format**: MultiBel expects the `countryCode` without `+` or `00` and the `number` without country code and without the leading `0`. For the Dutch mobile number `06-12345678` this is:
+
+  | Field                      | Value       |
+  | -------------------------- | ----------- |
+  | `phoneNumber1.countryCode` | `31`        |
+  | `phoneNumber1.number`      | `612345678` |
+
+  The `countryCode` is a fixed value in the field mapping. The complex mapping of `number` converts the phone number from HelloID to this format: it keeps only the digits, removes the country code (`+31`, `0031` or `31`) and removes the leading `0`. For example, `06-12345678`, `+31 6 12345678`, `+31 (0)6-12345678` and `0031612345678` all become `612345678`. The mapping assumes Dutch phone numbers. Adjust the `countryCode` and the mapping for phone numbers from other countries.
+- **Phone numbers not in the field mapping**: phone numbers that already exist in MultiBel but are not in the field mapping are sent back unchanged in the `PUT` body and are kept.
 
 ## Development resources
 
