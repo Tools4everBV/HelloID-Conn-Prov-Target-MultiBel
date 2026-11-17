@@ -58,8 +58,12 @@ function ConvertTo-MultiBelAccountObject {
     )
     process {
         $returnObject = $AccountObject | Select-Object -Property $outputContext.Data.PSObject.Properties.Name
-        if ($returnObject.PSObject.Properties.Name -contains 'jobCategories') {
-            $returnObject.jobCategories = $returnObject.jobCategories.id -join ', '
+        # Only keep countryCode and number of the phone numbers, as used in the field mapping
+        foreach ($property in @($returnObject.PSObject.Properties | Where-Object { $_.Name -match '^phoneNumber([1-9]|10)$' })) {
+            $property.Value = [PSCustomObject]@{
+                countryCode = "$($property.Value.countryCode)"
+                number      = "$($property.Value.number)"
+            }
         }
         return $returnObject
     }
@@ -106,11 +110,24 @@ try {
         'CreateAccount' {
             # Adjust the body according to the API documentation.
             $body = $actionContext.Data.PSObject.Copy()
-            $body.jobCategories = @(@{
-                    id = $actionContext.Data.jobCategories
-                })
+
+            # MultiBel requires at least one job category. The default job category from the configuration is set
+            $body | Add-Member -NotePropertyName 'jobCategories' -NotePropertyValue @(@{
+                    id = $actionContext.Configuration.DefaultJobCategoryId
+                }) -Force
             $body | Add-Member @{
                 isActive = $false
+            }
+
+            # MultiBel requires both countryCode and number. Phone numbers without a number are not sent
+            foreach ($phoneNumberProperty in @($body.PSObject.Properties.Name | Where-Object { $_ -match '^phoneNumber([1-9]|10)$' })) {
+                $phoneNumber = $body.$phoneNumberProperty
+                if ([string]::IsNullOrWhiteSpace($phoneNumber.number)) {
+                    $body.PSObject.Properties.Remove($phoneNumberProperty)
+                }
+                elseif ([string]::IsNullOrWhiteSpace($phoneNumber.countryCode)) {
+                    throw "The field mapping [$phoneNumberProperty.countryCode] is empty while [$phoneNumberProperty.number] has a value. MultiBel requires both values"
+                }
             }
             $headers['Content-Type'] = 'application/json;charset=utf-8'
             $splatCreateParams = @{

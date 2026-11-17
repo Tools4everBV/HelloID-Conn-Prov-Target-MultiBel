@@ -19,5 +19,15 @@
             "description": "The URL to the API.",
             "required": true
         }
+    },
+    {
+        "key": "DefaultJobCategoryId",
+        "type": "input",
+        "defaultValue": "",
+        "templateOptions": {
+            "label": "Default job category id",
+            "description": "The id of the default job category in MultiBel. This job category is set when creating an account and is excluded from the permissions.",
+            "required": true
+        }
     }
 ]

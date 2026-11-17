@@ -3,7 +3,7 @@
   "MappingFields": [
     {
       "Name": "firstName",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -19,24 +19,8 @@
       ]
     },
     {
-      "Name": "jobCategories",
-      "Description": "Id of the default job category in MultiBel",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Create"
-          ],
-          "MappingMode": "Fixed",
-          "Value": "\"157559\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
       "Name": "rolName",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -52,7 +36,7 @@
     },
     {
       "Name": "otherInfo",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -68,7 +52,7 @@
     },
     {
       "Name": "emailAdress",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -85,7 +69,7 @@
     },
     {
       "Name": "personId",
-      "Description": "",
+      "Description": "[Mandatory] Correlation value. Used to correlate an existing MultiBel account (account correlation field)",
       "Type": "Text",
       "MappingActions": [
         {
@@ -101,7 +85,7 @@
     },
     {
       "Name": "lastName",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -118,7 +102,7 @@
     },
     {
       "Name": "multibelPersonId",
-      "Description": "",
+      "Description": "[Mandatory] Account reference. Filled with the multibelPersonId returned by MultiBel and stored in the account data",
       "Type": "Text",
       "MappingActions": [
         {
@@ -130,6 +114,74 @@
           "Value": "\"\"",
           "UsedInNotifications": false,
           "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "phoneNumber1.countryCode",
+      "Description": "[Optional] Country code of phone number 1 without + or 00, for example 31. Mandatory when phoneNumber1.number has a value",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create",
+            "Update"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"31\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "phoneNumber1.number",
+      "Description": "[Optional] Phone number 1 without country code and leading 0, for example 612345678. When empty, phone number 1 (number and countryCode) is cleared in MultiBel",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create",
+            "Update"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"// MultiBel expects the number without country code and without leading 0, for example 612345678\\r\\n// The country code is set separately in phoneNumber1.countryCode, for example 31\\r\\nfunction getPhoneNumber() {\\r\\n    let phone = Person.Contact.Business.Phone.Mobile;\\r\\n    if (typeof phone === 'undefined' || !phone) {\\r\\n        return '';\\r\\n    }\\r\\n\\r\\n    // Keep only the digits, for example '+31 (0)6-12345678' becomes '310612345678'\\r\\n    phone = phone.replace(/\\\\D/g, '');\\r\\n\\r\\n    // Remove the country code: 0031 or 31 (only when followed by 9 or 10 digits)\\r\\n    if (phone.startsWith('0031')) {\\r\\n        phone = phone.substring(4);\\r\\n    } else if (phone.startsWith('31') && phone.length >= 11) {\\r\\n        phone = phone.substring(2);\\r\\n    }\\r\\n\\r\\n    // Remove the leading 0, for example 0612345678 becomes 612345678\\r\\n    phone = phone.replace(/^0+/, '');\\r\\n\\r\\n    return phone;\\r\\n}\\r\\n\\r\\ngetPhoneNumber();\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "phoneNumber2.countryCode",
+      "Description": "[Optional] Country code of phone number 2 without + or 00, for example 31. Mandatory when phoneNumber2.number has a value",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create",
+            "Update"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"31\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "phoneNumber2.number",
+      "Description": "[Optional] Phone number 2 without country code and leading 0, for example 612345678. When empty, phone number 2 (number and countryCode) is cleared in MultiBel",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create",
+            "Update"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"// MultiBel expects the number without country code and without leading 0, for example 612345678\\r\\n// The country code is set separately in phoneNumber2.countryCode, for example 31\\r\\nfunction getPhoneNumber() {\\r\\n    let phone = Person.Contact.Business.Phone.Fixed;\\r\\n    if (typeof phone === 'undefined' || !phone) {\\r\\n        return '';\\r\\n    }\\r\\n\\r\\n    // Keep only the digits, for example '+31 (0)6-12345678' becomes '310612345678'\\r\\n    phone = phone.replace(/\\\\D/g, '');\\r\\n\\r\\n    // Remove the country code: 0031 or 31 (only when followed by 9 or 10 digits)\\r\\n    if (phone.startsWith('0031')) {\\r\\n        phone = phone.substring(4);\\r\\n    } else if (phone.startsWith('31') && phone.length >= 11) {\\r\\n        phone = phone.substring(2);\\r\\n    }\\r\\n\\r\\n    // Remove the leading 0, for example 0612345678 becomes 612345678\\r\\n    phone = phone.replace(/^0+/, '');\\r\\n\\r\\n    return phone;\\r\\n}\\r\\n\\r\\ngetPhoneNumber();\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
         }
       ]
     }
