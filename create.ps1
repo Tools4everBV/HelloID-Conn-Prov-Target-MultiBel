@@ -106,9 +106,11 @@ try {
         'CreateAccount' {
             # Adjust the body according to the API documentation.
             $body = $actionContext.Data.PSObject.Copy()
-            $body.jobCategories = @(@{
-                    id = $actionContext.Data.jobCategories
-                })
+
+            # The default job category from the configuration is always set, regardless of the field mapping
+            $body | Add-Member -NotePropertyName 'jobCategories' -NotePropertyValue @(@{
+                    id = $actionContext.Configuration.DefaultJobCategoryId
+                }) -Force
             $body | Add-Member @{
                 isActive = $false
             }

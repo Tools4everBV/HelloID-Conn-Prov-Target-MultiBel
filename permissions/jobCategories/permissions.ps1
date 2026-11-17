@@ -60,10 +60,16 @@ try {
             'MB-ApiKey' = "$($actionContext.Configuration.ApiKey)"
         }
     }
-    $retrievedJobCategories = @(Invoke-RestMethod @splatGetJobCategoriesParams)
+    $response = Invoke-RestMethod @splatGetJobCategoriesParams
+    # Skip empty items, so no permission with an empty reference is returned
+    $retrievedJobCategories = @(@($response) | Where-Object { -not [string]::IsNullOrWhiteSpace("$($_.id)") })
     Write-Information "Retrieved [$($retrievedJobCategories.Count)] job categories"
 
     foreach ($jobCategory in $retrievedJobCategories) {
+        if ("$($jobCategory.id)" -eq $actionContext.Configuration.DefaultJobCategoryId) {
+            Write-Information "Skipping default job category [$($jobCategory.name)] - [$($jobCategory.id)]"
+            continue
+        }
         $outputContext.Permissions.Add(
             @{
                 DisplayName    = "JobCategory - $($jobCategory.name)"

@@ -125,7 +125,8 @@ try {
                 Method  = 'GET'
                 Headers = $headers
             }
-            $jobCategory = @(Invoke-RestMethod @splatGetJobCategoriesParams) | Where-Object { "$($_.id)" -eq $permissionReference } | Select-Object -First 1
+            $jobCategories = Invoke-RestMethod @splatGetJobCategoriesParams
+            $jobCategory = @($jobCategories) | Where-Object { "$($_.id)" -eq $permissionReference } | Select-Object -First 1
             if ($null -eq $jobCategory) {
                 throw "The job category with id [$permissionReference] could not be found in MultiBel"
             }

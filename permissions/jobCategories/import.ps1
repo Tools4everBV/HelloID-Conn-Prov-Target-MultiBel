@@ -81,36 +81,21 @@ try {
         $response = (Invoke-RestMethod @splatGetUsersParams)
         foreach ($importedAccount in $response.personViewModels) {
             foreach ($assignedJobCategory in @($importedAccount.jobCategories | Where-Object { $null -ne $_ })) {
-                $key = "$($assignedJobCategory.id)"
-                if (-not $membersByJobCategory.ContainsKey($key)) {
-                    $membersByJobCategory[$key] = [System.Collections.Generic.List[string]]::new()
-                    $jobCategories += [PSCustomObject]@{
-                        id   = $assignedJobCategory.id
-                        name = $assignedJobCategory.name
-                    }
+                if ("$($assignedJobCategory.id)" -eq $actionContext.Configuration.DefaultJobCategoryId) {
+                    continue
                 }
-                $membersByJobCategory[$key].Add("$($importedAccount.multibelPersonId)")
+                $permission = @{
+                    PermissionReference = @{
+                        Reference = $assignedJobCategory.id
+                    }
+                    AccountReferences   = @($importedAccount.multibelPersonId)
+                }
+                Write-Output $permission
             }
+            
         }
         $page++
     } while ($response.personViewModels.count -gt 0 -and $actionContext.DryRun -eq $false)
-
-    foreach ($jobCategory in $jobCategories) {
-        $members = $membersByJobCategory["$($jobCategory.id)"]
-        $permission = @{
-            PermissionReference = @{
-                Reference = "$($jobCategory.id)"
-            }
-            AccountReferences   = $null
-        }
-
-        # Split the members into batches of 500, the maximum number of account references per permission object
-        $batchSize = 500
-        for ($i = 0; $i -lt $members.Count; $i += $batchSize) {
-            $permission.AccountReferences = [array]$members[$i..([Math]::Min($i + $batchSize - 1, $members.Count - 1))]
-            Write-Output $permission
-        }
-    }
     Write-Information 'MultiBel permission entitlement import completed'
 }
 catch {

@@ -25,10 +25,12 @@
     - [Field mapping](#field-mapping)
     - [Account Reference](#account-reference)
     - [Permissions](#permissions)
+    - [Default job category](#default-job-category)
     - [Concurrent actions](#concurrent-actions)
   - [Remarks](#remarks)
     - [FieldMapping](#fieldmapping)
     - [Retrieve roles from MultiBel](#retrieve-roles-from-multibel)
+    - [Retrieve job categories from MultiBel](#retrieve-job-categories-from-multibel)
     - [JobCategories as permissions](#jobcategories-as-permissions)
     - [API Limitation](#api-limitation)
   - [Development resources](#development-resources)
@@ -64,16 +66,17 @@ https://raw.githubusercontent.com/Tools4everBV/HelloID-Conn-Prov-Target-MultiBel
 ```
 
 ### Requirements
-- Connection settings: API Key, Base URL
+- Connection settings: API Key, Base URL, Default job category id
 
 ### Connection settings
 
 The following settings are required to connect to the API.
 
-| Setting | Description                        | Mandatory |
-| ------- | ---------------------------------- | --------- |
-| API Key | The API-Key  to connect to the API | Yes       |
-| BaseUrl | The URL to the API                 | Yes       |
+| Setting                 | Description                                                                                                                                          | Mandatory |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| API Key                 | The API-Key  to connect to the API                                                                                                                   | Yes       |
+| BaseUrl                 | The URL to the API                                                                                                                                   | Yes       |
+| Default job category id | The `id` of the default job category in MultiBel. Set on create and excluded from the permissions. See [Default job category](#default-job-category) | Yes       |
 
 ### Correlation configuration
 
@@ -107,7 +110,18 @@ The connector supports _JobCategories_ as permissions. The scripts are located i
 | `revokePermission.ps1` | Removes a job category from the account                             |
 | `import.ps1`           | Imports the job categories with their accounts (entitlement import) |
 
-The permission reference is the `id` of the job category in MultiBel.
+The permission reference is the `id` of the job category in MultiBel. The default job category from the configuration is not available as a permission, see [Default job category](#default-job-category).
+
+### Default job category
+
+MultiBel requires at least one job category when creating an account. This job category is configured in the connection setting `Default job category id`.
+
+- **Create**: the default job category is always set when creating an account. The value of the field mapping `jobCategories` is overwritten by the configuration setting.
+- **Permissions**: the default job category is excluded in `permissions.ps1` and in the permission import (`import.ps1`). It can therefore not be selected in a business rule and is never revoked by HelloID.
+- **Find the id**: use the snippet in [Retrieve job categories from MultiBel](#retrieve-job-categories-from-multibel) to look up the `id` of the default job category.
+
+> [!NOTE]
+> When the default job category is changed in the configuration, existing accounts keep their current default job category. The new default job category is only set on newly created accounts. The previous default job category becomes available as a permission.
 
 ### Concurrent actions
 
@@ -118,9 +132,13 @@ MultiBel has no separate API endpoints to add or remove a single job category. T
 
 ## Remarks
 ### FieldMapping
-- **JobCategories**: In MultiBel, a user can have multiple job categories. The job categories are managed as permissions, see [Permissions](#permissions). The field mapping `jobCategories` is only used on create, because MultiBel (most likely) requires at least one job category when creating an account. It is not used in the update action. In the account import script the job categories are listed comma separated.
-  <!-- TODO: Verify whether an account can be created with an empty jobCategories list. Expected: not allowed. If it is allowed, the default job category in the field mapping can be removed. -->
-- **Values must exist**: The Field `JobCategories` and `rolName` must be configured with existing values in MultiBel.
+- **JobCategories**: In MultiBel, a user can have multiple job categories. MultiBel requires at least one job category when creating an account. The job categories are handled as follows:
+  1. **Create**: one default job category is set initially. The `id` comes from the configuration setting `Default job category id` and overwrites the field mapping `jobCategories`, see [Default job category](#default-job-category).
+  2. **Update**: the job categories cannot be updated through the account lifecycle (update action).
+  3. **Permissions**: all other job categories are granted and revoked as permissions, see [Permissions](#permissions).
+
+  In the account import script the job categories are listed comma separated.
+- **Values must exist**: The configuration setting `Default job category id` and the field `rolName` must be configured with existing values in MultiBel.
 - **rolName**: The `rolName` can be updated. To do so, add the `Update` action to the `rolName` field mapping. If the role does not exist in MultiBel, the MultiBel API returns an error and the action fails. See [Retrieve roles from MultiBel](#retrieve-roles-from-multibel) for the available roles.
 - **OtherInfo** must be included in the body when creating an account. The API returns a `500` error if this field is not present in the body.
 
@@ -138,8 +156,20 @@ $roles | Select-Object id, name, description | Format-Table -AutoSize
 
 Use the value of `name` in the `rolName` field mapping, with the same spelling.
 
+### Retrieve job categories from MultiBel
+The available job categories and their `id` can be retrieved with the PowerShell snippet below. Replace `<API key>` with the API key from the connection settings.
+
+```powershell
+$baseUrl = 'https://webapi.multibel.eu'
+$headers = @{
+    'MB-ApiKey' = '<API key>'
+}
+$jobCategories = Invoke-RestMethod -Uri "$baseUrl/api/v2/JobCategory" -Method 'GET' -Headers $headers
+@($jobCategories) | Select-Object id, name, parentId | Format-Table -AutoSize
+```
+
 ### JobCategories as permissions
-- **Default job category**: MultiBel requires at least one job category when creating an account. The field mapping `jobCategories` therefore still sets a default job category on create. This default job category is not managed by HelloID, unless it is also assigned as a permission through a business rule. In that case it will be removed when the permission is revoked.
+- **Default job category**: The default job category is not managed as a permission, see [Default job category](#default-job-category).
 - **No dedicated endpoints**: Grant and revoke update the job categories by sending the complete person to `PUT /api/v2/Persons/Person`. See [Concurrent actions](#concurrent-actions).
 - **Last job category**: Revoking the last job category of an account sends an empty list. Verify in the test environment whether MultiBel accepts a person without job categories.
 - **Sub job categories**: MultiBel returns an error when a sub job category of a corporation job category is assigned.

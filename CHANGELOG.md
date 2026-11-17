@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file. The format 
 ### Added
 - Permission scripts for `JobCategories`: retrieve, grant, revoke and import (`permissions/jobCategories`).
 - README section about permissions and the required setting of 1 concurrent action.
+- Configuration setting `DefaultJobCategoryId`. This job category is always set on create (overwrites the field mapping `jobCategories`) and is excluded from the permissions and the permission import, so it cannot be selected in a business rule.
 
 ### Changed
 - Update now supports changing `rolName` instead of throwing an error. An invalid role is reported by the MultiBel API.

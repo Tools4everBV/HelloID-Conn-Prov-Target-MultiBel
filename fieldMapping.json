@@ -20,15 +20,15 @@
     },
     {
       "Name": "jobCategories",
-      "Description": "Id of the default job category in MultiBel",
+      "Description": "Overwritten by the configuration setting DefaultJobCategoryId (id of the default job category in MultiBel)",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
             "Create"
           ],
-          "MappingMode": "Fixed",
-          "Value": "\"157559\"",
+          "MappingMode": "None",
+          "Value": "\"\"",
           "UsedInNotifications": false,
           "StoreInAccountData": false
         }
