@@ -24,8 +24,12 @@
     - [Correlation configuration](#correlation-configuration)
     - [Field mapping](#field-mapping)
     - [Account Reference](#account-reference)
+    - [Permissions](#permissions)
+    - [Concurrent actions](#concurrent-actions)
   - [Remarks](#remarks)
     - [FieldMapping](#fieldmapping)
+    - [Retrieve roles from MultiBel](#retrieve-roles-from-multibel)
+    - [JobCategories as permissions](#jobcategories-as-permissions)
     - [API Limitation](#api-limitation)
   - [Development resources](#development-resources)
     - [API endpoints](#api-endpoints)
@@ -41,14 +45,14 @@ _HelloID-Conn-Prov-Target-MultiBel_ is a _target_ connector. _MultiBel_ provides
 
 The following features are available:
 
-| Feature                                   | Supported | Actions                                 | Remarks |
-| ----------------------------------------- | --------- | --------------------------------------- | ------- |
-| **Account Lifecycle**                     | ✅         | Create, Update, Enable, Disable, Delete |         |
-| **Permissions**                           | ❌         | -                                       |         |
-| **Resources**                             | ❌         | -                                       |         |
-| **Entitlement Import: Accounts**          | ✅         | -                                       |         |
-| **Entitlement Import: Permissions**       | ❌         | -                                       |         |
-| **Governance Reconciliation Resolutions** | ✅         | -                                       |         |
+| Feature                                   | Supported | Actions                                 | Remarks       |
+| ----------------------------------------- | --------- | --------------------------------------- | ------------- |
+| **Account Lifecycle**                     | ✅         | Create, Update, Enable, Disable, Delete |               |
+| **Permissions**                           | ✅         | Retrieve, Grant, Revoke                 | JobCategories |
+| **Resources**                             | ❌         | -                                       |               |
+| **Entitlement Import: Accounts**          | ✅         | -                                       |               |
+| **Entitlement Import: Permissions**       | ✅         | -                                       | JobCategories |
+| **Governance Reconciliation Resolutions** | ✅         | -                                       |               |
 
 
 ## Getting started
@@ -92,11 +96,53 @@ The field mapping can be imported by using the _fieldMapping.json_ file.
 
 The account reference is populated with the property `multibelPersonId` property from _MultiBel_
 
+### Permissions
+
+The connector supports _JobCategories_ as permissions. The scripts are located in the folder `permissions/jobCategories`.
+
+| Script                 | Description                                                         |
+| ---------------------- | ------------------------------------------------------------------- |
+| `permissions.ps1`      | Retrieves all job categories from MultiBel                          |
+| `grantPermission.ps1`  | Adds a job category to the account                                  |
+| `revokePermission.ps1` | Removes a job category from the account                             |
+| `import.ps1`           | Imports the job categories with their accounts (entitlement import) |
+
+The permission reference is the `id` of the job category in MultiBel.
+
+### Concurrent actions
+
+> [!IMPORTANT]
+> The number of concurrent actions (_Concurrent sessions_) must be set to **1**.
+
+MultiBel has no separate API endpoints to add or remove a single job category. The job categories are part of the person object, and the `PUT /api/v2/Persons/Person` call overwrites the complete person. Grant and revoke therefore read the person, change the list of job categories and write back the full person. When multiple actions run at the same time for the same person, one action can overwrite the changes of another, causing granted job categories to be lost or revoked ones to come back. With concurrent actions set to 1, every action works on the latest state of the person.
+
 ## Remarks
 ### FieldMapping
-- **JobCategories**: In MultiBel, a user can have multiple job categories. The connector is configured to set only a default job category during creation. And will not be updated afterwards. In the Import script the job categories are listed comma separated.
+- **JobCategories**: In MultiBel, a user can have multiple job categories. The job categories are managed as permissions, see [Permissions](#permissions). The field mapping `jobCategories` is only used on create, because MultiBel (most likely) requires at least one job category when creating an account. It is not used in the update action. In the account import script the job categories are listed comma separated.
+  <!-- TODO: Verify whether an account can be created with an empty jobCategories list. Expected: not allowed. If it is allowed, the default job category in the field mapping can be removed. -->
 - **Values must exist**: The Field `JobCategories` and `rolName` must be configured with existing values in MultiBel.
+- **rolName**: The `rolName` can be updated. To do so, add the `Update` action to the `rolName` field mapping. If the role does not exist in MultiBel, the MultiBel API returns an error and the action fails. See [Retrieve roles from MultiBel](#retrieve-roles-from-multibel) for the available roles.
 - **OtherInfo** must be included in the body when creating an account. The API returns a `500` error if this field is not present in the body.
+
+### Retrieve roles from MultiBel
+The field `rolName` must contain the exact name of an existing role in MultiBel. The available roles can be retrieved with the PowerShell snippet below. Replace `<API key>` with the API key from the connection settings.
+
+```powershell
+$baseUrl = 'https://webapi.multibel.eu'
+$headers = @{
+    'MB-ApiKey' = '<API key>'
+}
+$roles = Invoke-RestMethod -Uri "$baseUrl/api/v2/Role" -Method 'GET' -Headers $headers
+$roles | Select-Object id, name, description | Format-Table -AutoSize
+```
+
+Use the value of `name` in the `rolName` field mapping, with the same spelling.
+
+### JobCategories as permissions
+- **Default job category**: MultiBel requires at least one job category when creating an account. The field mapping `jobCategories` therefore still sets a default job category on create. This default job category is not managed by HelloID, unless it is also assigned as a permission through a business rule. In that case it will be removed when the permission is revoked.
+- **No dedicated endpoints**: Grant and revoke update the job categories by sending the complete person to `PUT /api/v2/Persons/Person`. See [Concurrent actions](#concurrent-actions).
+- **Last job category**: Revoking the last job category of an account sends an empty list. Verify in the test environment whether MultiBel accepts a person without job categories.
+- **Sub job categories**: MultiBel returns an error when a sub job category of a corporation job category is assigned.
 
 ### API Limitation
 - **PhoneNumbers**:<br>
@@ -108,12 +154,13 @@ The API supports 1 - 10 phone numbers, in different properties. There is a diffe
 
 The following endpoints are used by the connector
 
-| Endpoint                                | HTTP Method | Description                                    |
-| --------------------------------------- | ----------- | ---------------------------------------------- |
-| /api/v2/Persons/Person?PersonId         | GET         | Retrieve (correlate) user information          |
-| /api/v2/Persons/Person?MultiBelPersonId | GET, DELETE | Retrieve and delete user information           |
-| /api/v2/Persons/Person                  | POST, PUT   | Create and update user information             |
-| /api/v2/Persons/Persons                 | GET         | Retrieve all users information (import)        |
+| Endpoint                                | HTTP Method | Description                               |
+| --------------------------------------- | ----------- | ----------------------------------------- |
+| /api/v2/Persons/Person?PersonId         | GET         | Retrieve (correlate) user information     |
+| /api/v2/Persons/Person?MultiBelPersonId | GET, DELETE | Retrieve and delete user information      |
+| /api/v2/Persons/Person                  | POST, PUT   | Create and update user information        |
+| /api/v2/Persons/Persons                 | GET         | Retrieve all users information (import)   |
+| /api/v2/JobCategory                     | GET         | Retrieve all job categories (permissions) |
 
 ### API documentation
 

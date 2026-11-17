@@ -124,11 +124,9 @@ try {
             }
 
             if ($propertiesChanged.Name -contains 'JobCategories') {
-                throw "The connector does not support updating the 'JobCategories' property."
+                throw "The connector does not support updating the 'JobCategories' properties in the Account lifecycle."
             }
-            if ($propertiesChanged.Name -contains 'rolName') {
-                throw "The connector does not support updating the 'rolName' property."
-            }
+            
 
             $headers['Content-Type'] = 'application/json;charset=utf-8'
             $splatUpdateParams = @{
