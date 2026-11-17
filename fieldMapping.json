@@ -3,7 +3,7 @@
   "MappingFields": [
     {
       "Name": "firstName",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -20,7 +20,7 @@
     },
     {
       "Name": "jobCategories",
-      "Description": "Overwritten by the configuration setting DefaultJobCategoryId (id of the default job category in MultiBel)",
+      "Description": "[Mandatory] Overwritten by the configuration setting DefaultJobCategoryId (id of the default job category in MultiBel)",
       "Type": "Text",
       "MappingActions": [
         {
@@ -36,7 +36,7 @@
     },
     {
       "Name": "rolName",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -52,7 +52,7 @@
     },
     {
       "Name": "otherInfo",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -68,7 +68,7 @@
     },
     {
       "Name": "emailAdress",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -85,7 +85,7 @@
     },
     {
       "Name": "personId",
-      "Description": "",
+      "Description": "[Mandatory] Correlation value. Used to correlate an existing MultiBel account (account correlation field)",
       "Type": "Text",
       "MappingActions": [
         {
@@ -101,7 +101,7 @@
     },
     {
       "Name": "lastName",
-      "Description": "",
+      "Description": "[Mandatory]",
       "Type": "Text",
       "MappingActions": [
         {
@@ -118,7 +118,7 @@
     },
     {
       "Name": "multibelPersonId",
-      "Description": "",
+      "Description": "[Mandatory] Account reference. Filled with the multibelPersonId returned by MultiBel and stored in the account data",
       "Type": "Text",
       "MappingActions": [
         {
