@@ -74,7 +74,7 @@ try {
             @{
                 DisplayName    = "JobCategory - $($jobCategory.name)"
                 Identification = @{
-                    Reference = "$($jobCategory.id)"
+                    Reference = $jobCategory.id
                 }
             }
         )
