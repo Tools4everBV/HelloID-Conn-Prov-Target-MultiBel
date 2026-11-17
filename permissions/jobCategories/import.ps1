@@ -56,20 +56,6 @@ try {
         'MB-ApiKey' = "$($actionContext.Configuration.ApiKey)"
     }
 
-    # Retrieve all job categories, so permissions without members are also known and the displayName matches the permissions script
-    $splatGetJobCategoriesParams = @{
-        Uri     = "$($actionContext.Configuration.BaseUrl)/api/v2/JobCategory"
-        Method  = 'GET'
-        Headers = $headers
-    }
-    $jobCategories = @(Invoke-RestMethod @splatGetJobCategoriesParams)
-    Write-Information "Retrieved [$($jobCategories.Count)] job categories"
-
-    $membersByJobCategory = @{}
-    foreach ($jobCategory in $jobCategories) {
-        $membersByJobCategory["$($jobCategory.id)"] = [System.Collections.Generic.List[string]]::new()
-    }
-
     # Retrieve all persons (20 per page) and group the persons by job category
     $page = 0
     do {

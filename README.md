@@ -24,7 +24,6 @@
     - [Correlation configuration](#correlation-configuration)
     - [Field mapping](#field-mapping)
     - [Account Reference](#account-reference)
-    - [Permissions](#permissions)
     - [Default job category](#default-job-category)
     - [Concurrent actions](#concurrent-actions)
   - [Remarks](#remarks)
@@ -98,19 +97,6 @@ The field mapping can be imported by using the _fieldMapping.json_ file.
 ### Account Reference
 
 The account reference is populated with the property `multibelPersonId` property from _MultiBel_
-
-### Permissions
-
-The connector supports _JobCategories_ as permissions. The scripts are located in the folder `permissions/jobCategories`.
-
-| Script                 | Description                                                         |
-| ---------------------- | ------------------------------------------------------------------- |
-| `permissions.ps1`      | Retrieves all job categories from MultiBel                          |
-| `grantPermission.ps1`  | Adds a job category to the account                                  |
-| `revokePermission.ps1` | Removes a job category from the account                             |
-| `import.ps1`           | Imports the job categories with their accounts (entitlement import) |
-
-The permission reference is the `id` of the job category in MultiBel. The default job category from the configuration is not available as a permission, see [Default job category](#default-job-category).
 
 ### Default job category
 

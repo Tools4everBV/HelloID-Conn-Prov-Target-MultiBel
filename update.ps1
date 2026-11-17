@@ -119,7 +119,7 @@ try {
             }
 
 
-            foreach ($property in $propertiesChanged | Select-Object -ExcludeProperty JobCategories, rolName) {
+            foreach ($property in $propertiesChanged) {
                 $body.$($property.Name) = $actionContext.Data.$($property.Name)
             }
 
